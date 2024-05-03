@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Taskbar</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js" integrity="sha256-sw0iNNXmOJbQhYFuC9OF2kOlD5KQKe1y5lfBn4C9Sjg=" crossorigin="anonymous"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans&display=swap');
+        html, body {
+            font-size: normal;
+            font-family: "Open Sans", sans-serif;;
+        }
+
+        /* Taskbar */
+        #taskbar-area {
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            overflow-y: hidden;
+            overflow-x: auto;
+            height: 50px;
+            display: flex;
+        }
+
+        #taskbar-area .task-item {
+            width: 200px;
+            height: 50px;
+            background: #ddd;
+            border: 1px solid #000;
+            padding: 10px;
+            flex-shrink: 0;
+            border-top-right-radius: 5px;
+            border-top-left-radius: 5px
+        }
+
+        .modal-item {
+            width: 25%
+        }
+    </style>
+
+</head>
+<body class="bg-light">
+    
+    <div class="d-flex align-items-center gx-0" id="modal_area">
+    </div>
+
+    <div id="taskbar-area">
+    </div>
+
+    <button type="button" class="btn btn-primary rounded position-fixed" style="bottom: 120px;left: 20px" onclick="Main.addModal()"><i class="ri-add-line"></i></button>
+    <button type="button" class="btn btn-danger rounded position-fixed" style="bottom: 60px;left: 20px" onclick="Main.closeAllModal()"><i class="ri-close-line"></i></button>
+
+    <script>
+        $(document).ready(() => {
+            Main.setDraggable();
+        })
+
+        const Main = {
+
+            currentModalPosition : [],
+
+            addModal : () => {
+                let totalModal = $(`#modal_area .modal-item`).length;
+                let modalArea = $(`#modal_area`);
+                let modalId = totalModal + 1;
+
+                if(totalModal > 0){
+                    modalArea.append(Main.templateModal(modalId));
+                } else {
+                    modalArea.html(Main.templateModal(modalId));
+                }
+                Main.setDraggable();
+            },
+
+            templateModal : (id) => {
+                return `<div class="modal-item flex-shrink-0 draggable" id="modal${id}">
+                    <div class="card">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <div class="fs-5 card-header-title">Modal ${id}</div>
+                            <div>
+                                <i class="ri-subtract-line" style="cursor: pointer" onclick="Main.minimizeModal(${id})"></i>&nbsp;&nbsp;
+                                <i class="ri-close-line" style="cursor: pointer" onclick="Main.closeModal(${id})"></i>
+                            </div>
+                        </div>
+                        <div class="card-body">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer eget mi in ex semper malesuada...</div>
+                    </div>
+                </div>`;
+            },
+
+            closeModal : (id) => {
+                $(`#modal_area #modal${id}`).remove();
+                Main.removeCurrentPosition(id);
+            },
+
+            closeAllModal : (id) => {
+                $(`#modal_area`).html(``);
+                Main.currentModalPosition = [];
+            },
+
+            /*
+             * Usable
+             */
+
+            minimizeModal : (id) => {
+                let totalTasks = $("#taskbar-area .task-item").length;
+                let modal = $(`#modal_area #modal${id}`).attr("style", "display: none");
+                let modalTemp = $(`#modal_area #modal${id}`).append(`<span id="modalTemp${id}">&nbsp;</span>`);
+                let modalHeader = $(`#modal_area #modal${id} .card-header .card-header-title`).html();
+
+                if(totalTasks > 0){
+                    $("#taskbar-area").append(Main.minimizeTemplate(id, modalHeader));
+                } else {
+                    $("#taskbar-area").html(Main.minimizeTemplate(id, modalHeader));
+                }
+            },
+
+            minimizeTemplate : (id, title) => {
+                return `<div class="task-item" id="minimizeModal${id}" onclick="Main.maximizeModal(${id})" style="cursor: pointer">${title}</div>`;
+            },
+
+            maximizeModal : (id) => {
+                $(`#modal_area #modal${id}`).attr("style", Main.currentModalPosition.find(item => item.id == id).style);
+                $(`#modal_area #modalTemp${id}`).remove();
+                $(`#taskbar-area #minimizeModal${id}`).remove();
+            },
+
+            setDraggable : () => {
+                $(".draggable").draggable({
+                    drag: (e, ui) => {
+                        let modalId = parseInt(ui.helper[0].id.replace("modal", ""));
+                        let modalStyle = ui.helper[0].attributes.style.value;
+
+                        $(`#modal_area #modal${modalId}`).addClass("position-fixed");
+
+                        if(typeof Main.currentModalPosition.find(item => item.id === modalId) !== "undefined"){
+                            Main.updateCurrentPosition(modalId, {
+                                style: modalStyle
+                            });
+                        } else {
+                            Main.currentModalPosition.push({
+                                id: modalId,
+                                style: modalStyle
+                            });
+                        }
+                    }
+                });
+            },
+
+            updateCurrentPosition : (id, updatedData) => {
+                $.each(Main.currentModalPosition, function(index, obj) {
+                    if (obj.id === id) {
+                        $.extend(obj, updatedData);
+                        return false;
+                    }
+                });
+            },
+
+            removeCurrentPosition : (id) => {
+                $.each(Main.currentModalPosition, function(index, obj) {
+                    if (obj.id === id) {
+                        Main.currentModalPosition.splice(index, 1);
+                        return false;
+                    }
+                });
+            }
+
+        };
+    </script>
+    
+</body>
+</html>
